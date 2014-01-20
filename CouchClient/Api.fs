@@ -7,6 +7,13 @@ type Credentials = { username: string; password: string }
 type CouchDbError = { error: string; reason: string}
 type DatabaseIdentification = {origin: Uri; database: string}
 
+type CouchMutationResponse = {ok: bool; id: string; rev:string}
+type CouchGetResponse = { _id: string; _rev: string }
+type CouchDbDocument<'t> = { _id:string; _rev: string; ``type``:string; data: 't }
+                            with static member createFromMutationResponse r d =
+                                  { _id = r.id; _rev = r.rev; ``type`` = d.GetType().FullName; data = d }
+                                 static member createFromGetResponse (r:CouchGetResponse) d =
+                                  { _id = r._id; _rev = r._rev; ``type`` = d.GetType().FullName; data = d }
 type DatabaseClient =
     | AnonymousDatabaseClient of DatabaseIdentification
     | AuthenticatingDatabaseClient of DatabaseIdentification * Credentials
@@ -37,14 +44,6 @@ let withBasicAuthentication username password (c:DatabaseClient) =
 
 let ping client : string = 
     (getServerUri client).ToString() |> createRequest Get |> getResponseBody
-    
-type CouchMutationResponse = {ok: bool; id: string; rev:string}
-type CouchGetResponse = { _id: string; _rev: string }
-type CouchDbDocument<'t> = { _id:string; _rev: string; ``type``:string; data: 't }
-                            with static member createFromMutationResponse r d =
-                                  { _id = r.id; _rev = r.rev; ``type`` = d.GetType().FullName; data = d }
-                                 static member createFromGetResponse (r:CouchGetResponse) d =
-                                  { _id = r._id; _rev = r._rev; ``type`` = d.GetType().FullName; data = d }
                                   
 let private isSuccessResponse r =
     r.StatusCode > 199 && r.StatusCode < 300
@@ -99,3 +98,46 @@ let getDocument client (id:string) : Choice<CouchDbDocument<'t>,string>=
             |> Choice1Of2
     else
         sprintf "Response status code was %d" resp.StatusCode |> Choice2Of2
+
+let createDatabase client =
+    let resp = (getDatabaseUri client).ToString() 
+                |> createRequest Put
+                |> getResponse
+
+    if isSuccessResponse resp then
+        ()
+    else
+        failwith "Unable to create database %s. Status code was %d" (extractDatabaseIdentification client).database resp.StatusCode
+
+let deleteDatabase client =
+    let resp = (getDatabaseUri client).ToString() 
+                |> createRequest Delete
+                |> getResponse
+                
+    if isSuccessResponse resp then
+        ()
+    else
+        sprintf "Unable to create database %s. Status code was %d. Response was %A" (extractDatabaseIdentification client).database resp.StatusCode resp
+            |> failwith
+
+type MapReduce = { map: string; reduce: Option<string>}
+type CouchView = { _id: Option<string>; _rev: Option<string>; language: string; views: System.Collections.Generic.Dictionary<string,MapReduce> } 
+type View = { name: string; mapReduce: MapReduce }
+
+let queryView client view startkey endkey = 
+    let docId = "_design/" + view.name
+    let checkResp = (getDatabaseUri client).ToString() + "/" + docId
+                    |> createRequest Get
+                    |> getResponse
+
+    if isSuccessResponse checkResp then
+        JsonConvert.DeserializeObject<CouchView>(checkResp.EntityBody.Value)
+    else
+        let viewColl = System.Collections.Generic.Dictionary()
+        viewColl.Add(view.name, view.mapReduce)
+        let insertResp = (getDatabaseUri client).ToString() 
+                            |> createRequest Post
+                            |> withHeader (ContentType "application/json")
+                            |> withBody (JsonConvert.SerializeObject({_id = Some docId; _rev = None; language = "javascript"; views = viewColl }))
+                            |> getResponse
+        failwith "yolo"

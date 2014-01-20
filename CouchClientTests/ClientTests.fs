@@ -79,3 +79,11 @@ type ``when updating a document`` ()=
             | Choice1Of2(d) ->
                 d._rev |> should not' (equal doc._rev)
 
+[<TestFixture>]
+type ``when querying`` ()=
+    let client = createDatabaseClient "http://localhost.:5984" "testing"
+
+    [<Test>]
+    member x.``it should be able to query a new view`` ()=
+        let view = { View.name = "view1"; mapReduce = {map = ""; reduce = None } }
+        queryView client view "startkey" "endkey"
