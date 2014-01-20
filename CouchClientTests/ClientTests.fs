@@ -9,18 +9,13 @@ open FsUnit
 type ``create a client`` ()=
 
     [<Test>] member x.
-     ``it should create a client`` ()=
-        createDatabaseClient "http://localhost:5984" "testing"
-            |> withBasicAuthentication "un" "pw"
-
-    [<Test>] member x.
      ``it should provide a database uri`` ()=
         createDatabaseClient "http://localhost:5984/" "testing"
             |> getDatabaseUri
             |> (fun u -> u.ToString())
             |> should equal "http://localhost:5984/testing"
 
-       [<Test>] member x.
+    [<Test>] member x.
      ``it should provide a document uri`` ()=
         getDocumentUri (createDatabaseClient "http://localhost:5984/" "testing") "AliceXYZ"
             |> (fun u -> u.ToString())
@@ -68,7 +63,19 @@ type ``when reading a document by its key`` ()=
     [<Test>] member x.``it should return the object`` ()=
                 match getDocument client doc._id with
                     | Choice2Of2(s) -> failwith s
-                    | Choice1Of2(d) -> printfn "%A" d; d.data.name |> should equal "Brad"
+                    | Choice1Of2(d) -> d.data.name |> should equal "Brad"
 
+[<TestFixture>]
+type ``when updating a document`` ()=
+    let client = createDatabaseClient "http://localhost.:5984" "testing"
+    let doc = match insertDocument client { name = "Update Me"; age = 63 } with
+                | Choice2Of2(s) -> failwith s
+                | Choice1Of2(d) -> d
                 
+    [<Test>] 
+    member x.``it should be able to modify the document`` ()=
+        match updateDocument client {doc with data = { doc.data with age = 33 } } with
+            | Choice2Of2(s) -> failwith s
+            | Choice1Of2(d) ->
+                d._rev |> should not' (equal doc._rev)
 

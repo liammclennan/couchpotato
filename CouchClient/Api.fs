@@ -46,20 +46,24 @@ type CouchDbDocument<'t> = { _id:string; _rev: string; ``type``:string; data: 't
                                  static member createFromGetResponse (r:CouchGetResponse) d =
                                   { _id = r._id; _rev = r._rev; ``type`` = d.GetType().FullName; data = d }
                                   
-let isSuccessResponse r =
+let private isSuccessResponse r =
     r.StatusCode > 199 && r.StatusCode < 300
 
-let insertDocument client (document:'d) : Choice<CouchDbDocument<'d>,string> = 
-    let serialize o = 
-        let jo = JsonConvert.SerializeObject document
-                    |> JsonConvert.DeserializeObject :?> Newtonsoft.Json.Linq.JObject
-        jo.Add(new Newtonsoft.Json.Linq.JProperty("type", o.GetType().FullName))
-        JsonConvert.SerializeObject(jo)
+let private serialize o (rev:Option<string>) = 
+    let jo = JsonConvert.SerializeObject o
+                |> JsonConvert.DeserializeObject :?> Newtonsoft.Json.Linq.JObject
+    jo.Add(new Newtonsoft.Json.Linq.JProperty("type", o.GetType().FullName))
+    if rev.IsSome then
+        jo.Add(new Newtonsoft.Json.Linq.JProperty("_rev", rev.Value))
+    else
+        ()
+    JsonConvert.SerializeObject(jo)
 
+let insertDocument client (document:'d) : Choice<CouchDbDocument<'d>,string> = 
     let resp = (getDatabaseUri client).ToString() 
                 |> createRequest Post
                 |> withHeader (ContentType "application/json")
-                |> withBody (serialize document)
+                |> withBody (serialize document None)
                 |> getResponse
    
     if isSuccessResponse resp then
@@ -68,6 +72,20 @@ let insertDocument client (document:'d) : Choice<CouchDbDocument<'d>,string> =
     else
         sprintf "Response status code was %d" resp.StatusCode |> Choice2Of2
        
+let updateDocument client (cd:CouchDbDocument<'d>) : Choice<CouchDbDocument<'d>,string> =
+    let resp = (getDatabaseUri client).ToString() + "/" + cd._id
+                |> createRequest Put
+                |> withHeader (ContentType "application/json")
+                |> withBody (serialize cd.data (Some cd._rev))
+                |> getResponse
+   
+    if isSuccessResponse resp then
+        CouchDbDocument<'d>.createFromMutationResponse (JsonConvert.DeserializeObject<CouchMutationResponse>(resp.EntityBody.Value)) cd.data 
+            |> Choice1Of2
+    else
+        sprintf "Response status code was %d" resp.StatusCode |> Choice2Of2
+ 
+
 let getDocument client (id:string) : Choice<CouchDbDocument<'t>,string>= 
     let resp = (getDatabaseUri client).ToString() + "/" + id
                 |> createRequest Get
