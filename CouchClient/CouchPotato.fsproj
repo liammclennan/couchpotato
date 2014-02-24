@@ -49,8 +49,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Api.fs" />
+    <Compile Include="CouchPotato.PublicTypes.fs" />
+    <Compile Include="CouchPotato.Types.fs" />
+    <Compile Include="CouchPotato.Serialization.fs" />
+    <Compile Include="CouchPotato.Api.fs" />
     <None Include="packages.config" />
+    <Compile Include="Uris.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

@@ -38,46 +38,37 @@ type AOrB =
 type ``when inserting a document`` ()=
     let client = createDatabaseClient "http://localhost:5984" "testing"
 
-    [<Test>] member x.
-     ``it should insert the document`` ()=
-        match insertDocument client { name = "Alice"; age = 11 } with
-            | Choice2Of2(s) -> Assert.Fail s
-            | Choice1Of2(d) -> d.data.name |> should equal "Alice"
-    
-    [<Test>] member x.
-     ``it should save discriminated unions and Tuples`` ()=        
-        match insertDocument client (A ("cats",7)) with
-           | Choice2Of2(s) -> Assert.Fail s
-           | Choice1Of2(d) -> 
-                match d.data with
-                    | A (s,n) -> s |> should equal "cats" 
-                    | _ -> Assert.Fail "This ain't right"
+    [<Test>] 
+    member x.``it should insert the document`` ()=
+        let d = insertDocument client { name = "Alice"; age = 11 }
+        d.data.name |> should equal "Alice"
+
+    [<Test>] 
+    member x.``it should save discriminated unions and Tuples`` ()=
+        let d = insertDocument client (A ("cats",7))
+        match d.data with
+            | A (s,n) -> s |> should equal "cats" 
+            | _ -> Assert.Fail "This ain't right"
 
 [<TestFixture>]
 type ``when reading a document by its key`` ()=
     let client = createDatabaseClient "http://localhost:5984" "testing"
-    let doc = match insertDocument client { name = "Brad"; age = 93 } with
-                | Choice2Of2(s) -> failwith s
-                | Choice1Of2(d) -> d
+    let d= insertDocument client { name = "Brad"; age = 93 }
 
-    [<Test>] member x.``it should return the object`` ()=
-                match getDocument client doc._id with
-                    | Choice2Of2(s) -> failwith s
-                    | Choice1Of2(d) -> d.data.name |> should equal "Brad"
+    [<Test>] 
+    member x.``it should return the object`` ()=
+        let d' = getDocument client d._id
+        d'.data.name |> should equal "Brad"
 
 [<TestFixture>]
 type ``when updating a document`` ()=
     let client = createDatabaseClient "http://localhost.:5984" "testing"
-    let doc = match insertDocument client { name = "Update Me"; age = 63 } with
-                | Choice2Of2(s) -> failwith s
-                | Choice1Of2(d) -> d
+    let d = insertDocument client { name = "Update Me"; age = 63 }
                 
     [<Test>] 
     member x.``it should be able to modify the document`` ()=
-        match updateDocument client {doc with data = { doc.data with age = 33 } } with
-            | Choice2Of2(s) -> failwith s
-            | Choice1Of2(d) ->
-                d._rev |> should not' (equal doc._rev)
+        let d' = updateDocument client {d with data = { d.data with age = 33 } }
+        d'._rev |> should not' (equal d._rev)
 
 [<TestFixture>]
 type ``when querying`` ()=
@@ -85,5 +76,7 @@ type ``when querying`` ()=
 
     [<Test>]
     member x.``it should be able to query a new view`` ()=
-        let view = { View.name = "view1"; mapReduce = {map = ""; reduce = None } }
-        queryView client view "startkey" "endkey"
+        insertDocument client { name = "Alice"; age = 11 } |> ignore
+        insertDocument client { name = "Bob"; age = 8 } |> ignore
+//        insertDocument client {  } 
+//        getViewUri client "views" "byname" |> should equal "cat"

@@ -57,6 +57,8 @@
     <None Include="packages.config" />
     <None Include="app.config" />
     <Compile Include="Environment.fs" />
+    <Compile Include="MigrationTests.fs" />
+    <Compile Include="ViewTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CouchClient\CouchPotato.fsproj">
