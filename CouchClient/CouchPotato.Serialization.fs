@@ -1,32 +1,19 @@
 ﻿module CouchPotato.Serialization
 open Newtonsoft.Json
+open CouchPotato.PublicTypes
 open CouchPotato.Types
 
-/// add a 'type' property and convert a record into a json string
-let serializeRecord o = 
-    let jo = JsonConvert.SerializeObject o
-                |> JsonConvert.DeserializeObject
-                :?> Newtonsoft.Json.Linq.JObject
-    jo.Add(new Newtonsoft.Json.Linq.JProperty("type", o.GetType().FullName))
-    JsonConvert.SerializeObject(jo)
+let serializeDocument = JsonConvert.SerializeObject
 
-let serializeView v =
-    JsonConvert.SerializeObject(v)
-
-let serializeCouchDocument (cd:CouchDocument<'d>) =
-    let jo = JsonConvert.SerializeObject cd.data
-                |> JsonConvert.DeserializeObject
-                :?> Newtonsoft.Json.Linq.JObject
-    jo.Add(new Newtonsoft.Json.Linq.JProperty("type", typeof<'d>.FullName))
-    jo.Add(new Newtonsoft.Json.Linq.JProperty("_id", cd._id))
-    jo.Add(new Newtonsoft.Json.Linq.JProperty("_rev", cd._rev))
-    JsonConvert.SerializeObject(jo)
+let responseToCouchDocument<'r> resp =
+     JsonConvert.DeserializeObject<CouchDocument<'r>>(resp)
 
 let responseToMutationResponse resp = 
     JsonConvert.DeserializeObject<CouchMutationResponse>(resp)
 
-let responseToGetResponse resp =
-    JsonConvert.DeserializeObject<CouchGetResponse>(resp)
+let responseToDocument<'r> r = JsonConvert.DeserializeObject<'r> r
 
-let responseToRecord<'r> resp =
-    JsonConvert.DeserializeObject<'r>(resp)
+let responseToSeq<'r> resp : seq<CouchDocument<'r>> =
+    let results = JsonConvert.DeserializeObject<CouchListResponse<'r>>(resp)
+    results.rows
+        |> Seq.map (fun (record) -> record.value)

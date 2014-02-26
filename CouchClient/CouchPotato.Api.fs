@@ -38,26 +38,27 @@ let private isSuccessResponse r =
     r.StatusCode > 199 && r.StatusCode < 300
 
 let insertDocument client (document:'d) : CouchDocument<'d> =
+    let insertable = { ``type`` = document.GetType().FullName; data = document }
     let resp = getDatabaseUriString client 
                 |> createRequest Post
                 |> withHeader (ContentType "application/json")
-                |> withBody (serializeRecord document)
+                |> withBody (serializeDocument insertable)
                 |> getResponse
    
     if isSuccessResponse resp then
-        CouchDocument<_>.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) document
+        CouchDocument<'d>.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) document
     else
         sprintf "Response status code was %d" resp.StatusCode |> failwith
        
 let updateDocument client (cd:CouchDocument<'d>) : CouchDocument<'d> =
     let resp = getDatabaseUriString client + "/" + cd._id
-                |> createRequest Put
-                |> withHeader (ContentType "application/json")
-                |> withBody (serializeCouchDocument cd)
-                |> getResponse
+                        |> createRequest Put
+                        |> withHeader (ContentType "application/json")
+                        |> withBody (serializeDocument cd)
+                        |> getResponse
    
     if isSuccessResponse resp then
-        CouchDocument<_>.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) cd.data 
+        CouchDocument<'d>.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) cd.data
     else
         sprintf "Response status code was %d" resp.StatusCode |> failwith
 
@@ -68,9 +69,7 @@ let getDocument client (id:string) : CouchDocument<'t> =
                 |> getResponse
 
     if isSuccessResponse resp then
-        CouchDocument<_>.createFromGetResponse 
-            (responseToGetResponse(resp.EntityBody.Value)) 
-            (responseToRecord<'t>(resp.EntityBody.Value))
+        responseToCouchDocument<'t> resp.EntityBody.Value
     else
         sprintf "Response status code was %d" resp.StatusCode |> failwith
 
@@ -97,7 +96,7 @@ let currentVersion client =
                 |> createRequest Get
                 |> withHeader (ContentType "application/json")
                 |> getResponseBody
-    let o = responseToRecord<DatabaseVersion> resp
+    let o = responseToDocument<DatabaseVersion> resp
     o.version
 
 let migrateTo client (v:string) (steps: List<MigrationStep>)=
@@ -123,10 +122,23 @@ let putView client designDocName (view:View) =
     let req = (getDocumentUri client ("_design/" + designDocName)).ToString()
                     |> createRequest Put
                     |> withHeader (ContentType "application/json")
-                    |> withBody (serializeRecord couchView)
+                    |> withBody (serializeDocument couchView)
     let resp = getResponse req
     ()
 
 let getViewUri client viewDoc viewName = 
     sprintf "%s/_design/%s/_view/%s" (getDatabaseUriString client) viewDoc viewName 
+
+let queryView<'d> client viewDoc viewName : seq<CouchDocument<'d>> =
+    let resp = getViewUri client viewDoc viewName
+                |> createRequest Get
+                |> withHeader (ContentType "application/json")
+                |> getResponse
+
+    if isSuccessResponse resp then
+        responseToSeq resp.EntityBody.Value
+    else
+        sprintf "Response status code was %d" resp.StatusCode |> failwith
+
+
 
