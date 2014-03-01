@@ -52,6 +52,7 @@
     <Compile Include="CouchPotato.PublicTypes.fs" />
     <Compile Include="CouchPotato.Types.fs" />
     <Compile Include="CouchPotato.Serialization.fs" />
+    <Compile Include="CouchPotato.Urls.fs" />
     <Compile Include="CouchPotato.Api.fs" />
     <None Include="packages.config" />
     <Compile Include="Uris.fs" />

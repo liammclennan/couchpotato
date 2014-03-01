@@ -3,6 +3,7 @@
 open System
 open NUnit.Framework
 open CouchPotato.Api
+open CouchPotato.Urls
 open FsUnit
 
 [<TestFixture>] 

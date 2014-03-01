@@ -4,24 +4,7 @@ open HttpClient
 open CouchPotato.PublicTypes
 open CouchPotato.Types
 open CouchPotato.Serialization
-
-let private extractDatabaseIdentification = function 
-    | AnonymousDatabaseClient di -> di
-    | AuthenticatingDatabaseClient (di,_) -> di
-
-let private getServerUri client = 
-    (extractDatabaseIdentification client).origin
-
-let getDatabaseUri client =
-    let di = extractDatabaseIdentification client
-    new Uri(di.origin, new Uri(di.database, UriKind.Relative))
-
-let private getDatabaseUriString client = 
-    (getDatabaseUri client).ToString()
-
-let getDocumentUri client id = 
-    let di = extractDatabaseIdentification client
-    new Uri(getDatabaseUriString client + "/" + id)
+open CouchPotato.Urls
 
 let createDatabaseClient url database =
     AnonymousDatabaseClient {origin=(new Uri(url)); database=database}
@@ -89,6 +72,7 @@ let deleteDatabase client =
                 |> getResponse
     ()
 
+// this is here because the client needs this type
 type MigrationStep = { name: string; action: DatabaseClient -> Unit }
 
 let currentVersion client =
@@ -124,10 +108,10 @@ let putView client designDocName (view:View) =
                     |> withHeader (ContentType "application/json")
                     |> withBody (serializeDocument couchView)
     let resp = getResponse req
-    ()
-
-let getViewUri client viewDoc viewName = 
-    sprintf "%s/_design/%s/_view/%s" (getDatabaseUriString client) viewDoc viewName 
+    if isSuccessResponse resp then
+        ()
+    else
+        sprintf "Response status code was %d" resp.StatusCode |> failwith
 
 let queryView<'d> client viewDoc viewName : seq<CouchDocument<'d>> =
     let resp = getViewUri client viewDoc viewName
