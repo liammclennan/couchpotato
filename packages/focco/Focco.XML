@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<doc>
+<assembly><name>focco</name></assembly>
+<members>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="M:Focco.Language.StripSinglelineComment(System.String)">
+<summary>
+ Returns the line stripped of any comment symbols.
+</summary>
+</member>
+<member name="M:Focco.Language.StripMultilineStartComment(System.String)">
+<summary>
+ Returns the line stripped of any comment symbols.
+</summary>
+</member>
+<member name="M:Focco.Language.StripMultilineEndComment(System.String)">
+<summary>
+ Returns the line stripped of any comment symbols.
+</summary>
+</member>
+<member name="M:Focco.Language.IsStartingMultilineComment(System.String)">
+<summary>
+ Returns true if the line matches the MultilineStartMatcher and not the CommentFilter; otherwise, false.
+</summary>
+</member>
+<member name="M:Focco.Language.IsSinglelineComment(System.String)">
+<summary>
+ Returns true if the line matches the SinglelineMatcher or
+ both the MultilineStartMatcher and MultilineEndMatcher,
+ excepting any matches with the CommentFilter; otherwise, false.
+</summary>
+</member>
+<member name="M:Focco.Language.IsEndingMultilineComment(System.String)">
+<summary>
+ Returns true if the line matches the MultilineEndMatcher and not the CommentFilter; otherwise, false.
+</summary>
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="T:Focco">
+
+</member>
+</members>
+</doc>

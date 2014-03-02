@@ -1,0 +1,397 @@
+<!DOCTYPE html />
+
+<html>
+<head>
+    <title>CouchPotato.Api.fs</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <link href="focco.css" rel="stylesheet" media="all" type="text/css" />
+    <script src="prettify.js" type="text/javascript"></script>
+</head>
+<body onload="prettyPrint()">
+    <div id="container">
+        <div id="background"></div>
+        <table cellpadding="0" cellspacing="0">
+            <thead>
+                <tr>
+                    <th class="docs">
+                        <h1>CouchPotato.Api.fs</h1>
+                    </th>
+                    <th class="code"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="section_1">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_1">&#182;</a>
+                        </div>
+                        
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>module CouchPotato.Api
+open System
+open HttpClient
+open CouchPotato.PublicTypes
+open CouchPotato.Types
+open CouchPotato.Serialization
+open CouchPotato.Urls
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_2">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_2">&#182;</a>
+                        </div>
+                        <h1>CouchPotato</h1>
+
+<p><em>* Don't use this. CouchPotato is not production ready.</em>*</p>
+
+<p>Couch Potato is a .net couchdb client. </p>
+
+<h1>Database Operations</h1>
+
+<h2>createDatabaseClient</h2>
+
+<p>Creates an object that can be used to access a couchdb database. The database must exist prior to using the client object. 
+eg.</p>
+
+<pre><code>createDatabaseClient "http://localhost:5984" "testing"
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let createDatabaseClient url database =
+    AnonymousDatabaseClient {origin=(new Uri(url)); database=database}
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_3">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_3">&#182;</a>
+                        </div>
+                        <h2>withBasicAuthentication</h2>
+
+<p>Add basic authentication to a database connection.</p>
+
+<pre><code>createDatabaseClient "http://localhost:5984" "testing"
+    |&gt; withBasicAuthentication "username" "password"
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let withBasicAuthentication username password (c:DatabaseClient) = 
+    match c with
+        | AnonymousDatabaseClient u -&gt; AuthenticatingDatabaseClient (u, {username = username; password = password})
+        | AuthenticatingDatabaseClient (u,c) -&gt; AuthenticatingDatabaseClient (u, {username = username; password = password})
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_4">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_4">&#182;</a>
+                        </div>
+                        <h2>ping <code>client</code></h2>
+
+<p>Pings a couchdb server and returns basic server information. eg.</p>
+
+<pre><code>createDatabaseClient "http://localhost:5984" "testing"
+   |&gt; ping
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let ping client : string = 
+    (getServerUri client).ToString() |&gt; createRequest Get |&gt; getResponseBody
+                                  
+let private isSuccessResponse r =
+    r.StatusCode &gt; 199 &amp;&amp; r.StatusCode &lt; 300
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_5">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_5">&#182;</a>
+                        </div>
+                        <h2>createDatabase <code>client</code></h2>
+
+<p>Creates a new database.</p>
+
+<pre><code>createDatabase "http://localhost:5984" "testing"
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let createDatabase client =
+    let resp = getDatabaseUriString client 
+                |&gt; createRequest Put
+                |&gt; getResponse
+
+    if isSuccessResponse resp then
+        ()
+    else
+        sprintf &quot;Unable to create database %s. Status code was %d. Response was %A&quot; (extractDatabaseIdentification client).database resp.StatusCode resp |&gt; failwith
+
+let deleteDatabase client =
+    let resp = getDatabaseUriString client 
+                |&gt; createRequest Delete
+                |&gt; getResponse
+    ()
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_6">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_6">&#182;</a>
+                        </div>
+                        <h1>Document Operations</h1>
+
+<h2>insertDocument <code>client</code> <code>document</code></h2>
+
+<p>Inserts a new document into a database. </p>
+
+<pre><code>insertDocument 
+    (createDatabaseClient "http://localhost:5984" "testing") 
+    { name = "Brad"; age = 93 }
+</code></pre>
+
+<p>Returns a <code>CouchDocument&lt;'d&gt;</code>.</p>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let insertDocument client (document:&#39;d) : CouchDocument&lt;&#39;d&gt; =
+    let insertable = { ``type`` = document.GetType().FullName; data = document }
+    let resp = getDatabaseUriString client 
+                |&gt; createRequest Post
+                |&gt; withHeader (ContentType &quot;application/json&quot;)
+                |&gt; withBody (serializeDocument insertable)
+                |&gt; getResponse
+   
+    if isSuccessResponse resp then
+        CouchDocument&lt;_&gt;.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) document
+    else
+        sprintf &quot;Response status code was %d&quot; resp.StatusCode |&gt; failwith
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_7">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_7">&#182;</a>
+                        </div>
+                        <h2>updateDocument <code>client</code> <code>couchdocument</code></h2>
+
+<p>Updates a CouchDocument&lt;'d>.</p>
+
+<pre><code>let client = createDatabaseClient "http://localhost:5984" "testing"
+let inserted = insertDocument client { name = "Brad"; age = 93 }
+updateDocument client {inserted with 
+    data = { inserted.data with age = 94 } }
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let updateDocument client (cd:CouchDocument&lt;&#39;d&gt;) : CouchDocument&lt;&#39;d&gt; =
+    let resp = getDatabaseUriString client + &quot;/&quot; + cd._id
+                        |&gt; createRequest Put
+                        |&gt; withHeader (ContentType &quot;application/json&quot;)
+                        |&gt; withBody (serializeDocument cd)
+                        |&gt; getResponse
+   
+    if isSuccessResponse resp then
+        CouchDocument&lt;&#39;d&gt;.createFromMutationResponse (responseToMutationResponse(resp.EntityBody.Value)) cd.data
+    else
+        sprintf &quot;Response status code was %d&quot; resp.StatusCode |&gt; failwith
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_8">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_8">&#182;</a>
+                        </div>
+                        <h2>getDocument <code>client</code> <code>id</code></h2>
+
+<p>Retrieve a <code>CouchDocument&lt;'d&gt;</code> by its id.</p>
+
+<pre><code>getDocument client "id of the document"
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let getDocument client (id:string) : CouchDocument&lt;&#39;t&gt; =
+    let resp = getDatabaseUriString client + &quot;/&quot; + id
+                |&gt; createRequest Get
+                |&gt; withHeader (ContentType &quot;application/json&quot;)
+                |&gt; getResponse
+
+    if isSuccessResponse resp then
+        responseToCouchDocument&lt;&#39;t&gt; resp.EntityBody.Value
+    else
+        sprintf &quot;Response status code was %d&quot; resp.StatusCode |&gt; failwith
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_9">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_9">&#182;</a>
+                        </div>
+                        <h1>View Operations</h1>
+
+<h2>putView <code>client</code> <code>designDocName</code> <code>view</code></h2>
+
+<p>Add a new to a design doc. Note: currently this function will cause an existing design doc to be overridden.</p>
+
+<pre><code>let view = { 
+            name = "alltemplates"; 
+            mapReduce = { 
+                         map = "function (doc) { 
+                                    if (doc['type'] === 'CouchPotato.Tests.Thing') {
+                                        emit(doc._id, doc); 
+                                    }"; 
+                         reduce = None }}
+putView client "nameofdesigndoc" view
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let putView client designDocName (view:View) =
+    let mr = seq {
+                yield view.name, view.mapReduce
+             } |&gt; Map.ofSeq
+    let couchView = { language = &quot;javascript&quot;; views = mr }
+    
+    let req = (getDocumentUri client (&quot;_design/&quot; + designDocName)).ToString()
+                    |&gt; createRequest Put
+                    |&gt; withHeader (ContentType &quot;application/json&quot;)
+                    |&gt; withBody (serializeDocument couchView)
+    let resp = getResponse req
+    if isSuccessResponse resp then
+        ()
+    else
+        sprintf &quot;Response status code was %d&quot; resp.StatusCode |&gt; failwith
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_10">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_10">&#182;</a>
+                        </div>
+                        <h2>queryView <code>client</code> <code>viewDoc</code> <code>viewName</code></h2>
+
+<p>Query a view for all results.</p>
+
+<pre><code>queryView&lt;'Thing&gt; client "viewtests" "alltemplates"
+</code></pre>
+
+<p>Returns a sequence of CouchDocuments&lt;'d></p>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let queryView&lt;&#39;d&gt; client viewDoc viewName : seq&lt;CouchDocument&lt;&#39;d&gt;&gt; =
+    let resp = getViewUri client viewDoc viewName
+                |&gt; createRequest Get
+                |&gt; withHeader (ContentType &quot;application/json&quot;)
+                |&gt; getResponse
+
+    if isSuccessResponse resp then
+        responseToSeq resp.EntityBody.Value
+    else
+        sprintf &quot;Response status code was %d&quot; resp.StatusCode |&gt; failwith
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_11">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_11">&#182;</a>
+                        </div>
+                        <p>this is here because the client needs this type</p>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>type MigrationStep = { name: string; action: DatabaseClient -&gt; Unit }
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_12">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_12">&#182;</a>
+                        </div>
+                        <h2>currentVersion <code>client</code></h2>
+
+<p>Fetch the current schema version.</p>
+
+<pre><code>currentVersion client
+</code></pre>
+
+<p>Returns an int.</p>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let currentVersion client =
+    let resp = getDatabaseUriString client + &quot;/&quot; + &quot;migration_version&quot;
+                |&gt; createRequest Get
+                |&gt; withHeader (ContentType &quot;application/json&quot;)
+                |&gt; getResponseBody
+    let o = responseToDocument&lt;DatabaseVersion&gt; resp
+    o.version
+
+</code></pre>
+                    </td>
+                </tr>
+                <tr id="section_13">
+                    <td class="docs">
+                        <div class="pilwrap">
+                            <a class="pilcrow" href="#section_13">&#182;</a>
+                        </div>
+                        <h2>migrateTo <code>client</code> <code>v</code> <code>steps</code></h2>
+
+<p>Migrate the database forward to version <code>v</code>.</p>
+
+<pre><code>migrateTo client "001" steps
+</code></pre>
+
+                    </td>
+                    <td class="code">
+                        <pre><code class='prettyprint'>let migrateTo client (v:string) (steps: List&lt;MigrationStep&gt;)=
+    let presentVersion = currentVersion client
+    let stepsToApply = List.filter (fun s -&gt; s.name &lt;= v &amp;&amp; s.name &gt; presentVersion) steps |&gt; List.sortBy (fun s -&gt; s.name)
+    if presentVersion &lt; v &amp;&amp; stepsToApply.Length &gt; 0 then 
+        for { name = name; action = action } in stepsToApply do
+            action client
+        let resp = (getDocumentUri client &quot;migration_version&quot;).ToString()
+                    |&gt; createRequest Put
+                    |&gt; withHeader (ContentType &quot;application/json&quot;)
+                    |&gt; withBody (&quot;{\&quot;version\&quot;: \&quot;&quot; + stepsToApply.[stepsToApply.Length-1].name + &quot;\&quot;}&quot;)
+                    |&gt; getResponse
+        ()
+    ()
+
+
+</code></pre>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
