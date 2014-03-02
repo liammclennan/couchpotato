@@ -211,6 +211,9 @@ let queryView<'d> client viewDoc viewName : seq<CouchDocument<'d>> =
 type MigrationStep = { name: string; action: DatabaseClient -> Unit }
 
 (*
+Migration Operations
+====================
+
 currentVersion `client`
 ----------------
 
